@@ -2,6 +2,7 @@
 #include <conio.h>
 #include <Windows.h>
 #include <time.h>
+#include <string.h>
 
 //뱀 최대 길이
 #define MAX_SNAKE_LENGTH 10
@@ -35,6 +36,9 @@ int isSnakeOut(const struct Snake snake, int mapWidth, int mapHeight);
 //뱀의 길이 확장
 int addSnakeLength(struct Snake* snake);
 
+//뱀이 아이템을 먹는지 확인하고 먹인경우 아이템 구조체 값 변경
+int isSnakeGetItem(const struct Snake snake, struct Item* item);
+
 //뱀의 길이와 좌표를 이용하여 화면에 출력
 void drawSnake(const struct Snake snake);
 
@@ -46,6 +50,9 @@ void spawnItem(struct Item* item, int mapWidth, int mapHeight);
 
 //맵 그리기
 void drawMap(int width, int height);
+
+//게임 진행상황별 메시지 출력
+void printGameState(char* gameState);
 
 //뱀 방향, 길이, 좌표 저장 구조체
 struct Snake {
@@ -64,16 +71,16 @@ struct Item {
 
 int main(void) {
 	//맵 최대 크기
-	int mapWidth = 20;
-	int mapHeight = 20;
+	int mapWidth = 30;
+	int mapHeight = 25;
 	
-	int gameSpeed = 66;
+	int gameSpeed = 132;
 	int nKey;
 	clock_t CurTime, OldTime;
 
 	//게임 시작 전 뱀 상태 초기화
 	struct Snake snake = { 77, 1, {SNAKE_POS_X, SNAKE_POS_Y} };
-
+	struct Item item = { "ㅁ", 0, {0,0} };
 	//커서 가리기
 	hideCursor();
 
@@ -81,13 +88,16 @@ int main(void) {
 	srand(time(NULL));
 	//한 스테이지에 대한 맵 생성 및 게임 수행
 	drawMap(mapWidth, mapHeight);
+	
 	while (1) {
 		//뱀의 맵 이탈 확인
 		if (isSnakeOut(snake, mapWidth, mapHeight)) {
+			printGameState("game over");
 			break;
 		}
 		//뱀 최대길이 달성
 		if (snake.length == MAX_SNAKE_LENGTH) {
+			printGameState("clear");
 			break;
 		}
 		OldTime = clock();
@@ -102,9 +112,11 @@ int main(void) {
 				//addSnakeLength(&snake);
 			}
 		}
-
+		spawnItem(&item, mapWidth, mapHeight);
 		drawSnake(snake);
-
+		if (isSnakeGetItem(snake, &item)) {
+			addSnakeLength(&snake);
+		}
 		//뱀 진행 속도 조절
 		while (1) {
 			CurTime = clock();
@@ -206,6 +218,18 @@ int addSnakeLength(struct Snake* snake){
 	}
 }
 
+int isSnakeGetItem(const struct Snake snake, struct Item* item)
+{
+	if (snake.pos[0].x == item->pos.x && snake.pos[0].y == item->pos.y) {
+		item->state = 0;
+		return 1;
+	}
+	else {
+		return 0;
+	}
+	
+}
+
 void drawSnake(const struct Snake snake){
 	for (int i = 0; i < snake.length; i++) {
 		gotoxy(snake.pos[i].x, snake.pos[i].y);
@@ -224,12 +248,18 @@ void eraseSnake(const struct Snake snake){
 
 //TODO 맵 테두리 내부에 생성되도록 만들것
 void spawnItem(struct Item* item, int mapWidth, int mapHeight){
-	int randX, randY;//생성될 아이템 좌표
-	randX = rand() % mapWidth;
-	randY = rand() % mapHeight;
-	item->pos.x = randX;
-	item->pos.y = randY;
-	gotoxy(randX, randY);
+	if (!item->state) {
+		int randX, randY;//생성될 아이템 좌표
+		do {
+			randX = rand() % ((mapWidth * 2) - 4) + 2;
+		} while (randX % 2 != 0);
+		randY = rand() % (mapHeight - 2) + 1;
+		item->pos.x = randX;
+		item->pos.y = randY;
+		item->state = 1;
+		gotoxy(randX, randY);
+		printf("♥");
+	}
 }
 
 void drawMap(int width, int height){
@@ -242,5 +272,24 @@ void drawMap(int width, int height){
 				printf("  ");
 			}
 		}printf("\n");
+	}
+}
+
+void printGameState(char* gameState){
+	gotoxy(12, 7);
+	if (!strcmp(gameState, "game over")) {
+		printf("┌───────────┐");
+		gotoxy(12, 8);
+		printf("│ GAME OVER!│");
+		gotoxy(12, 9);
+		printf("└───────────┘");
+	}
+
+	if (!strcmp(gameState, "clear")) {
+		printf("┌─────────────┐");
+		gotoxy(12, 8);
+		printf("│ STAGE CLEAR!│");
+		gotoxy(12, 9);
+		printf("└─────────────┘");
 	}
 }
